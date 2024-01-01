@@ -47,6 +47,9 @@ public class GitLogOptions: ArgumentConvertible {
     /// Do not fetch commits with more than one parent
     public var noMerges: Bool = false
     
+    public var remotes: Bool = false
+    public var shortstat: Bool = false
+    
     internal struct ReferenceComparator: ArgumentConvertible {
         var lhsReferenceName: String
         var rhsReferenceName: String
@@ -79,6 +82,14 @@ public class GitLogOptions: ArgumentConvertible {
         
         if noMerges {
             arguments.append("--no-merges")
+        }
+        
+        if remotes {
+            arguments.append("--remotes")
+        }
+        
+        if shortstat {
+            arguments.append("--shortstat")
         }
         
         if let reference = reference {

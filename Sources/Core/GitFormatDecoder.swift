@@ -32,21 +32,66 @@ class GitFormatDecoder {
         // remove trailing newlines and whitespaces
         let records = formatOutput.trimmingCharacters(in: .whitespacesAndNewlines)
         
-        for record in records.components(separatedBy: GitFormatEncoder.lineSeparator) {
-            guard record.count > 0 else { continue }
+        let regex = try! NSRegularExpression(pattern: "(.*?)\\$\\(END_OF_LINE\\)\\$(\n\n ([0-9]+) file[s]? changed(, ([0-9]+) insertion[s]?\\(\\+\\))?(, ([0-9]+) deletion[s]?\\(-\\))?)?", options: [.dotMatchesLineSeparators])
+        regex.enumerateMatches(in: records, range: NSRange(location: 0, length: records.count)) { result, flags, stop in
+            guard let result else {
+                assertionFailure()
+                return
+            }
+            
+            let recordRange = result.range(at: 1)
+            let filesChangedRange = result.range(at: 3)
+            let insertionsRange = result.range(at: 5)
+            let deletionsRange = result.range(at: 7)
+            
+            let record = (records as NSString).substring(with: recordRange)
+            
+            let filesChanged: Int?
+            if filesChangedRange.location != NSNotFound {
+                filesChanged = Int((records as NSString).substring(with: filesChangedRange))
+            }
+            else {
+                filesChanged = nil
+            }
+            
+            let insertions: Int?
+            if insertionsRange.location != NSNotFound {
+                insertions = Int((records as NSString).substring(with: insertionsRange))
+            }
+            else {
+                insertions = nil
+            }
+            
+            let deletions: Int?
+            if deletionsRange.location != NSNotFound {
+                deletions = Int((records as NSString).substring(with: deletionsRange))
+            }
+            else {
+                deletions = nil
+            }
+            
+            guard record.count > 0 else { return }
             
             // before decoding a record from JSON, we must ensure, it is properly escaped
             let escapedRecord = escapedSequence(record)
             
             guard let data = escapedRecord.data(using: .utf8) else {
-                continue
+                fatalError("Can't convert to utf8")
+                return
             }
 
             let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = .iso8601
             
             guard let object = try? decoder.decode(T.self, from: data) else {
-                continue
+                fatalError("Can't decode commit")
+                return
+            }
+            
+            if let record = object as? GitLogRecord {
+                record.filesChanged = filesChanged
+                record.insertions = insertions
+                record.deletions = deletions
             }
             
             objects.append(object)
