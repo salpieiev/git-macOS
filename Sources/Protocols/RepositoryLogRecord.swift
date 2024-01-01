@@ -43,4 +43,8 @@ public protocol RepositoryLogRecord {
     
     /// Reference names
     var refNames: String { get }
+    
+    var filesChanged: Int? { get }
+    var insertions: Int? { get }
+    var deletions: Int? { get }
 }
